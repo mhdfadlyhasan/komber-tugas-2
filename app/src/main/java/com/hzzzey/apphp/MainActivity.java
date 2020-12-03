@@ -13,10 +13,25 @@ import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Debug;
 import android.os.Environment;
 import android.os.SystemClock;
+import android.util.Log;
 import android.view.View;
 import android.widget.Toast;
+
+import java.io.BufferedReader;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.Proxy;
+import java.net.Socket;
+import java.net.UnknownHostException;
 
 public class MainActivity extends AppCompatActivity implements SensorEventListener, View.OnClickListener{
 
@@ -24,6 +39,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     SensorManager mSensorManager;
     private Sensor mSensorLight;
     private Sensor mAcceloMeter;
+    private Socket mSocket;
+    private PrintWriter output;
+    BufferedReader in;
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
@@ -36,6 +54,54 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         mSensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         mSensorLight = mSensorManager.getDefaultSensor(Sensor.TYPE_LIGHT);
         mAcceloMeter = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+        new Thread(new ClientThread()).start();//SOCKET HARUS THREAD
+
+    }
+    class ClientThread implements Runnable{
+        @Override
+        public void run() {
+            try {
+//            InetAddress serverAddr = InetAddress.getByName();
+                mSocket = new Socket("192.168.100.164", 8081);
+            } catch (SecurityException e1) {
+                Log.d("tugas 2", "security exception ");
+                e1.printStackTrace();
+            } catch (IOException e) {
+//            e.printStackTrace();
+                Log.d("tugas 2", "failed socket");
+            }
+            OutputStream out = null;
+            try {
+                out = mSocket.getOutputStream();
+                in = new BufferedReader(new InputStreamReader(mSocket.getInputStream()));
+                output= new PrintWriter(out);
+                output.write("Hello from Android");
+                output.flush();
+//                out.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+        }
+    }
+
+    class sendThread implements Runnable {
+        @Override
+        public void run() {
+            output.write("asiap");
+            output.flush();
+            String response = null;
+            try {
+                response = in.readLine();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            if (response != null) {
+                Log.d("result", response);
+            }
+            else
+                Log.d("result", "Eror");
+        }
     }
     @Override
     public void onSensorChanged(SensorEvent event) {
@@ -96,9 +162,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         int check = ContextCompat.checkSelfPermission(this, permission);
         return (check == PackageManager.PERMISSION_GRANTED);
     }
-
     @Override
     public void onClick(View v) {
-
+        new Thread(new sendThread()).start();//SOCKET HARUS THREAD
     }
 }
