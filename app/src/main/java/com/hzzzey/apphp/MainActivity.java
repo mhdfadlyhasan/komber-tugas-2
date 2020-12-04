@@ -36,6 +36,7 @@ import java.net.UnknownHostException;
 public class MainActivity extends AppCompatActivity implements SensorEventListener, View.OnClickListener{
 
     Boolean record = false, kill = false;
+    float valueSensorAccelX,valueSensorAccelY,valueSensorAccelZ;
     SensorManager mSensorManager;
     private Sensor mSensorLight;
     private Sensor mAcceloMeter;
@@ -88,19 +89,37 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     class sendThread implements Runnable {
         @Override
         public void run() {
-            output.write("asiap");
-            output.flush();
-            String response = null;
-            try {
-                response = in.readLine();
-            } catch (IOException e) {
-                e.printStackTrace();
+            while (record)
+            {
+                output.write(String.format("%f;%f;%f",valueSensorAccelX,valueSensorAccelY,valueSensorAccelZ));
+                output.flush();
+                SystemClock.sleep(100);
             }
-            if (response != null) {
-                Log.d("result", response);
+        }
+    }
+
+    class recieveThread implements Runnable {
+        @Override
+        public void run() {
+            while (record)
+            {
+                Log.d("result","waiting");
+//                output.write(String.format("%f;%f;%f",valueSensorAccelX,valueSensorAccelY,valueSensorAccelZ));
+//                output.flush();
+                String response = null;
+                try {
+                    response = in.readLine();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                if (response != null) {
+                    Log.d("result", response);
+                }
+                else
+                    Log.d("result", "Eror");
+                SystemClock.sleep(1000);
+                Log.d("result","get");
             }
-            else
-                Log.d("result", "Eror");
         }
     }
     @Override
@@ -114,7 +133,10 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 break;
             case Sensor.TYPE_ACCELEROMETER:
                 if (record) {
-                    SystemClock.sleep(100);
+                    valueSensorAccelX=event.values[0];
+                    valueSensorAccelY=event.values[1];
+                    valueSensorAccelZ=event.values[2];
+
                 }
                 break;
             default:
@@ -164,6 +186,16 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     }
     @Override
     public void onClick(View v) {
-        new Thread(new sendThread()).start();//SOCKET HARUS THREAD
+        if(record) {
+            record=false;
+        }
+        else {
+
+            Thread threadSend = new Thread(new sendThread());//SOCKET HARUS THREAD
+            Thread threadRecieve = new Thread(new recieveThread());//SOCKET HARUS THREAD
+            threadSend.start();
+            threadRecieve.start();
+            record = true;
+        }
     }
 }
