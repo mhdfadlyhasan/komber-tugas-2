@@ -27,9 +27,6 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.PrintWriter;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.net.Proxy;
 import java.net.Socket;
 import java.net.UnknownHostException;
 
@@ -91,7 +88,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         public void run() {
             while (record)
             {
-                output.write(String.format("%f;%f;%f",valueSensorAccelX,valueSensorAccelY,valueSensorAccelZ));
+                output.write(String.format("%f;%f;%f; ",valueSensorAccelX,valueSensorAccelY,valueSensorAccelZ));
                 output.flush();
                 SystemClock.sleep(100);
             }
@@ -136,7 +133,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                     valueSensorAccelX=event.values[0];
                     valueSensorAccelY=event.values[1];
                     valueSensorAccelZ=event.values[2];
-
                 }
                 break;
             default:
