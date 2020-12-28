@@ -44,6 +44,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private Socket mSocket;
     private PrintWriter output;
     BufferedReader in;
+    private boolean responded = true;
 
     // Variabel untuk offloading
     ArrayList<Float> sensoryDatasetsX = new ArrayList<>();
@@ -53,7 +54,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
         if (Build.VERSION.SDK_INT >= 23) {
             if (!checkPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
                 requestPermissions(new String[] {Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1001);
@@ -89,7 +89,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             } catch (IOException e) {
                 e.printStackTrace();
             }
-
         }
     }
 
@@ -104,14 +103,12 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
                 while (sensoryDatasetsX.size() > 20) {
                     sensoryDatasetsX.remove(0);
+                    sensoryDatasetsY.remove(0);
+                    sensoryDatasetsZ.remove(0);
                 }
-
-                Log.d("SensoryAddTest: X", sensoryDatasetsX.toString());
-
-                if (sensoryDatasetsX.size() == 20) {
+                if (sensoryDatasetsX.size() == 20 && responded) {
                     ArrayList<Float> rerata20Data
                             = dataAverage(sensoryDatasetsX, sensoryDatasetsY, sensoryDatasetsZ);
-
 //                    output.write(String.format("%f;%f;%f; ",valueSensorAccelX,valueSensorAccelY,valueSensorAccelZ));
                     output.write(String.format(Locale.ENGLISH, "%f;%f;%f;%f;%f;%f;%f;%f;%f; ",
                             rerata20Data.get(0),
@@ -124,8 +121,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                             rerata20Data.get(7),
                             rerata20Data.get(8)));   // Tolong saya dipaksa ngoding spaget
                     output.flush();
+                    Log.d("result","waiting");
+                    responded = false;
                 }
-
                 SystemClock.sleep(100);
             }
         }
@@ -134,7 +132,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     ArrayList<Float> dataAverage(ArrayList<Float> sensoryX, ArrayList<Float> sensoryY, ArrayList<Float> sensoryZ) {
         float averageX = 0, averageY = 0, averageZ = 0;
         ArrayList<Float> averageJoe = new ArrayList<>();
-
         // 6 data pertama
         for (int i = 0; i < 6; i++) {
             averageX += sensoryX.get(i);
@@ -175,8 +172,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             while (record)
             {
                 Log.d("result","waiting");
-//                output.write(String.format("%f;%f;%f",valueSensorAccelX,valueSensorAccelY,valueSensorAccelZ));
-//                output.flush();
                 String response = null;
                 try {
                     response = in.readLine();
@@ -190,10 +185,11 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                     Log.d("result", "Eror");
                 SystemClock.sleep(1000);
                 Log.d("result","get");
+                responded = true;
             }
         }
-    }
 
+    }
     @Override
     public void onSensorChanged(SensorEvent event) {
         int sensorType = event.sensor.getType();
