@@ -29,17 +29,27 @@ import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity implements SensorEventListener, View.OnClickListener{
 
     Boolean record = false, kill = false;
-    float valueSensorAccelX,valueSensorAccelY,valueSensorAccelZ;
+    float valueSensorAccelX, valueSensorAccelY, valueSensorAccelZ;
     SensorManager mSensorManager;
     private Sensor mSensorLight;
     private Sensor mAcceloMeter;
     private Socket mSocket;
     private PrintWriter output;
     BufferedReader in;
+
+    // Variabel untuk offloading
+    ArrayList<Float> sensoryDatasetsX = new ArrayList<>();
+    ArrayList<Float> sensoryDatasetsY = new ArrayList<>();
+    ArrayList<Float> sensoryDatasetsZ = new ArrayList<>();
+
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
@@ -88,11 +98,75 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         public void run() {
             while (record)
             {
-                output.write(String.format("%f;%f;%f; ",valueSensorAccelX,valueSensorAccelY,valueSensorAccelZ));
-                output.flush();
+                sensoryDatasetsX.add(valueSensorAccelX);
+                sensoryDatasetsY.add(valueSensorAccelY);
+                sensoryDatasetsZ.add(valueSensorAccelZ);
+
+                while (sensoryDatasetsX.size() > 20) {
+                    sensoryDatasetsX.remove(0);
+                }
+
+                Log.d("SensoryAddTest: X", sensoryDatasetsX.toString());
+
+                if (sensoryDatasetsX.size() == 20) {
+                    ArrayList<Float> rerata20Data
+                            = dataAverage(sensoryDatasetsX, sensoryDatasetsY, sensoryDatasetsZ);
+
+//                    output.write(String.format("%f;%f;%f; ",valueSensorAccelX,valueSensorAccelY,valueSensorAccelZ));
+                    output.write(String.format(Locale.ENGLISH, "%f;%f;%f;%f;%f;%f;%f;%f;%f; ",
+                            rerata20Data.get(0),
+                            rerata20Data.get(1),
+                            rerata20Data.get(2),
+                            rerata20Data.get(3),
+                            rerata20Data.get(4),
+                            rerata20Data.get(5),
+                            rerata20Data.get(6),
+                            rerata20Data.get(7),
+                            rerata20Data.get(8)));   // Tolong saya dipaksa ngoding spaget
+                    output.flush();
+                }
+
                 SystemClock.sleep(100);
             }
         }
+    }
+
+    ArrayList<Float> dataAverage(ArrayList<Float> sensoryX, ArrayList<Float> sensoryY, ArrayList<Float> sensoryZ) {
+        float averageX = 0, averageY = 0, averageZ = 0;
+        ArrayList<Float> averageJoe = new ArrayList<>();
+
+        // 6 data pertama
+        for (int i = 0; i < 6; i++) {
+            averageX += sensoryX.get(i);
+            averageY += sensoryY.get(i);
+            averageZ += sensoryZ.get(i);
+        }
+        averageX /= 6; averageY /= 6; averageZ /= 6;
+        averageJoe.add(averageX); averageJoe.add(averageY); averageJoe.add(averageZ);
+
+        // 7 data berikutnya
+        // Reset variabel
+        averageX = 0; averageY = 0; averageZ = 0;
+        for (int i = 6; i < 13; i++) {
+            averageX += sensoryX.get(i);
+            averageY += sensoryY.get(i);
+            averageZ += sensoryZ.get(i);
+        }
+        averageX /= 7; averageY /= 7; averageZ /= 7;
+        averageJoe.add(averageX); averageJoe.add(averageY); averageJoe.add(averageZ);
+
+        // 7 data terakhir
+        // Reset variabel
+        averageX = 0; averageY = 0; averageZ = 0;
+        for (int i = 13; i < 20; i++) {
+            averageX += sensoryX.get(i);
+            averageY += sensoryY.get(i);
+            averageZ += sensoryZ.get(i);
+        }
+        averageX /= 7; averageY /= 7; averageZ /= 7;
+        averageJoe.add(averageX); averageJoe.add(averageY); averageJoe.add(averageZ);
+
+        return averageJoe;
     }
 
     class recieveThread implements Runnable {
@@ -119,6 +193,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             }
         }
     }
+
     @Override
     public void onSensorChanged(SensorEvent event) {
         int sensorType = event.sensor.getType();
