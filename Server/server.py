@@ -8,9 +8,18 @@ import numpy as np
 from sklearn import tree
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
-
+import sys
+import mysql.connector
+mydb = mysql.connector.connect(
+  host="localhost",
+  user="root",
+  password="",
+  database="database_komber"
+)
+list_of_clients = []
 
 def sendStatus(hasil):
+    
     datatest=[
         float(hasil[0]),
         float(hasil[1]),
@@ -36,17 +45,54 @@ def GenerateTree():
 
 def Klasifikasi(tree, data):
     #start=time.time() #runtime mulai (uncomment if needed)
-    a=np.array(data).reshape(1,-1)
-    y_predict = tree.predict(a)
-    y_predict = int(y_predict[0])
-    if y_predict == 1:
-        return 'lompat'
-    elif y_predict == 2:
-        return 'jalan'
-    elif y_predict == 3:
-        return 'diam'
-    else: return 'salah'
-    
+    try:
+        a=np.array(data).reshape(1,-1)
+        y_predict = tree.predict(a)
+        y_predict = int(y_predict[0])
+        if y_predict == 1:
+            return 'lompat',True
+        elif y_predict == 2:
+            return 'jalan', False
+        elif y_predict == 3:
+            return 'diam', False
+        else: return 'salah', False
+    except:
+        print("Something Error!")
+        return 'diam', False
+
+def pushKeDB(latitude, longitude):
+    mycursor = mydb.cursor()
+    print("Lompat", float(latitude), float(longitude))
+    sql = ("Insert into coordinate (activity, latitude, longitude) values (%s, %s, %s)")
+    val = ("Lompat", float(latitude), float(longitude))
+    mydb.commit()
+    print("1 record inserted, ID:", mycursor.lastrowid) 
+
+def clientthread(conn,addr):
+    while True:
+        try:
+            message = conn.recv(2048).decode()
+            if message:
+                print('"'+str(message) + '" from user')
+                hasil = message.split(";")
+                result, isSendToDB = (sendStatus(hasil))
+                if(isSendToDB):
+                    pushKeDB(hasil[9],hasil[10])
+                print('selesai!')
+                print(result)
+                conn.send((result + "\n").encode())
+                # message = conn.recv(2048).decode()
+            else:
+                remove(conn)
+        except:
+            continue
+        
+def remove(connection):
+    print("removing connection!")
+    if connection in list_of_clients:
+        list_of_clients.remove(connection)
+        connection.close()
+
 tree = GenerateTree()
 server = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
 server.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
@@ -54,21 +100,20 @@ ip_address = '192.168.100.164'
 port = 8081
 server.bind((ip_address,port))
 server.listen(100)
-conn,addr = server.accept()
-print(addr[0]+ ' connected')
-message = conn.recv(2048).decode()
-print('"'+str(message) + '" from user')
-while True:
-    message = conn.recv(2048).decode()
-    print('"'+str(message) + '" from user')
-    #buat thread yang ngirim status tiap 1 detik
-    hasil = message.split(";")
-    kimak = (sendStatus(hasil))
-    print(kimak)
-    conn.send((kimak + "\n").encode())
+try:
+    print("App Ready!")
+    while True:
+        conn,addr = server.accept()
+        message = conn.recv(2048).decode()
+        print('"'+str(message) + '" from user')
+        list_of_clients.append(conn)
+        print(addr[0]+ ' connected')
+        threading.Thread(target=clientthread,args=(conn,addr)).start()
     # for result in hasil:
     #     if result=="":
     #         continue
     # nilaiX,nilaiY,nilaiZ,flag=result.split(";",3)
     #WAJIB ADA '#' NYA AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-conn.close()
+except KeyboardInterrupt:
+    sys.exit()
+    print("exited")

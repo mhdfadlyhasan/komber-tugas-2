@@ -1,0 +1,1 @@
+CREATE TABLE coordinate (id INT AUTO_INCREMENT PRIMARY KEY, Activity VARCHAR(255), latitude Float, longitude Float)

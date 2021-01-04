@@ -2,15 +2,20 @@ package com.hzzzey.apphp;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import android.Manifest;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Debug;
@@ -34,8 +39,10 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Locale;
 
-public class MainActivity extends AppCompatActivity implements SensorEventListener, View.OnClickListener{
+public class MainActivity extends AppCompatActivity implements SensorEventListener, View.OnClickListener {
 
+    double longitude, latitude;
+    //    PermissionsListener permissionsListener;
     Boolean record = false, kill = false;
     float valueSensorAccelX, valueSensorAccelY, valueSensorAccelZ;
     SensorManager mSensorManager;
@@ -56,16 +63,22 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         setContentView(R.layout.activity_main);
         if (Build.VERSION.SDK_INT >= 23) {
             if (!checkPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
-                requestPermissions(new String[] {Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1001);
+                requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1001);
+            }
+            if (!checkPermission(Manifest.permission.ACCESS_FINE_LOCATION)) {
+                requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1002);
             }
         }
         mSensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         mSensorLight = mSensorManager.getDefaultSensor(Sensor.TYPE_LIGHT);
         mAcceloMeter = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+        LocationManager lm = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+        lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 2000, 10, locationListener);
         new Thread(new ClientThread()).start();//SOCKET HARUS THREAD
 
     }
-    class ClientThread implements Runnable{
+
+    class ClientThread implements Runnable {
         @Override
         public void run() {
             try {
@@ -82,7 +95,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             try {
                 out = mSocket.getOutputStream();
                 in = new BufferedReader(new InputStreamReader(mSocket.getInputStream()));
-                output= new PrintWriter(out);
+                output = new PrintWriter(out);
                 output.write("Hello from Android");
                 output.flush();
 //                out.close();
@@ -92,16 +105,39 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         }
     }
 
+    private final LocationListener locationListener = new LocationListener() {
+        public void onLocationChanged(Location location) {
+            longitude = location.getLongitude();
+            latitude = location.getLatitude();
+            Log.d("coordinate", longitude + " " + latitude);
+        }
+
+        @Override
+        public void onStatusChanged(String provider, int status, Bundle extras) {
+
+        }
+
+        @Override
+        public void onProviderEnabled(String provider) {
+
+        }
+
+        @Override
+        public void onProviderDisabled(String provider) {
+
+        }
+    };
+
     class sendThread implements Runnable {
         @Override
         public void run() {
-            while (record)
-            {
+            while (record) {
                 sensoryDatasetsX.add(valueSensorAccelX);
                 sensoryDatasetsY.add(valueSensorAccelY);
                 sensoryDatasetsZ.add(valueSensorAccelZ);
 
                 while (sensoryDatasetsX.size() > 20) {
+                    Log.d("result", "pop depan");
                     sensoryDatasetsX.remove(0);
                     sensoryDatasetsY.remove(0);
                     sensoryDatasetsZ.remove(0);
@@ -110,7 +146,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                     ArrayList<Float> rerata20Data
                             = dataAverage(sensoryDatasetsX, sensoryDatasetsY, sensoryDatasetsZ);
 //                    output.write(String.format("%f;%f;%f; ",valueSensorAccelX,valueSensorAccelY,valueSensorAccelZ));
-                    output.write(String.format(Locale.ENGLISH, "%f;%f;%f;%f;%f;%f;%f;%f;%f; ",
+                    output.write(String.format(Locale.ENGLISH, "%f;%f;%f;%f;%f;%f;%f;%f;%f;%f;%f\n",
                             rerata20Data.get(0),
                             rerata20Data.get(1),
                             rerata20Data.get(2),
@@ -119,9 +155,12 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                             rerata20Data.get(5),
                             rerata20Data.get(6),
                             rerata20Data.get(7),
-                            rerata20Data.get(8)));   // Tolong saya dipaksa ngoding spaget
+                            rerata20Data.get(8),
+                            latitude,
+                            longitude
+                            ));   // Tolong saya dipaksa ngoding spaget
                     output.flush();
-                    Log.d("result","waiting");
+                    Log.d("result", "waiting");
                     responded = false;
                 }
                 SystemClock.sleep(100);
@@ -138,30 +177,46 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             averageY += sensoryY.get(i);
             averageZ += sensoryZ.get(i);
         }
-        averageX /= 6; averageY /= 6; averageZ /= 6;
-        averageJoe.add(averageX); averageJoe.add(averageY); averageJoe.add(averageZ);
+        averageX /= 6;
+        averageY /= 6;
+        averageZ /= 6;
+        averageJoe.add(averageX);
+        averageJoe.add(averageY);
+        averageJoe.add(averageZ);
 
         // 7 data berikutnya
         // Reset variabel
-        averageX = 0; averageY = 0; averageZ = 0;
+        averageX = 0;
+        averageY = 0;
+        averageZ = 0;
         for (int i = 6; i < 13; i++) {
             averageX += sensoryX.get(i);
             averageY += sensoryY.get(i);
             averageZ += sensoryZ.get(i);
         }
-        averageX /= 7; averageY /= 7; averageZ /= 7;
-        averageJoe.add(averageX); averageJoe.add(averageY); averageJoe.add(averageZ);
+        averageX /= 7;
+        averageY /= 7;
+        averageZ /= 7;
+        averageJoe.add(averageX);
+        averageJoe.add(averageY);
+        averageJoe.add(averageZ);
 
         // 7 data terakhir
         // Reset variabel
-        averageX = 0; averageY = 0; averageZ = 0;
+        averageX = 0;
+        averageY = 0;
+        averageZ = 0;
         for (int i = 13; i < 20; i++) {
             averageX += sensoryX.get(i);
             averageY += sensoryY.get(i);
             averageZ += sensoryZ.get(i);
         }
-        averageX /= 7; averageY /= 7; averageZ /= 7;
-        averageJoe.add(averageX); averageJoe.add(averageY); averageJoe.add(averageZ);
+        averageX /= 7;
+        averageY /= 7;
+        averageZ /= 7;
+        averageJoe.add(averageX);
+        averageJoe.add(averageY);
+        averageJoe.add(averageZ);
 
         return averageJoe;
     }
@@ -169,9 +224,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     class recieveThread implements Runnable {
         @Override
         public void run() {
-            while (record)
-            {
-                Log.d("result","waiting");
+            while (record) {
+                Log.d("result", "waiting");
                 String response = null;
                 try {
                     response = in.readLine();
@@ -180,16 +234,16 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 }
                 if (response != null) {
                     Log.d("result", response);
-                }
-                else
+                } else
                     Log.d("result", "Eror");
                 SystemClock.sleep(1000);
-                Log.d("result","get");
+                Log.d("result", "get");
                 responded = true;
             }
         }
 
     }
+
     @Override
     public void onSensorChanged(SensorEvent event) {
         int sensorType = event.sensor.getType();
@@ -201,9 +255,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 break;
             case Sensor.TYPE_ACCELEROMETER:
                 if (record) {
-                    valueSensorAccelX=event.values[0];
-                    valueSensorAccelY=event.values[1];
-                    valueSensorAccelZ=event.values[2];
+                    valueSensorAccelX = event.values[0];
+                    valueSensorAccelY = event.values[1];
+                    valueSensorAccelZ = event.values[2];
                 }
                 break;
             default:
@@ -233,11 +287,19 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         switch (requestCode) {
-            case 101 :
+            case 101:
                 if (grantResults.length > 0 && grantResults[0]
                         == PackageManager.PERMISSION_DENIED) {
                     Toast.makeText(this, "Anda harus mengijinkan aplikasi menulis sebelum melanjutkan.", Toast.LENGTH_SHORT).show();
                 }
+            case 1002:
+
+                if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+
+                    return;
+                }
+                LocationManager lm = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+                lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 2000, 10, locationListener);
                 break;
         }
     }
