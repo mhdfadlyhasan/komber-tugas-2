@@ -11,6 +11,7 @@ from sklearn.metrics import accuracy_score
 import sys
 import mysql.connector
 import flask
+import json
 from flask import jsonify
 
 mydb = mysql.connector.connect(
@@ -130,9 +131,8 @@ app.config["DEBUG"] = True
 print("api ready")
 @app.route('/', methods=['GET'])
 def home():
-    mycursor = mydb.cursor()
-    mycursor.execute("SELECT * FROM coordinate")
+    mycursor = mydb.cursor(dictionary=True)
+    mycursor.execute("SELECT id, activity,latitude,longitude FROM coordinate")
     myresult = mycursor.fetchall()
-    print(jsonify(myresult))
     return jsonify(myresult)
 app.run()

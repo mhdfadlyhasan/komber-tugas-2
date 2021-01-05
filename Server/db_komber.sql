@@ -23,8 +23,8 @@ DROP TABLE IF EXISTS `coordinate`;
 CREATE TABLE `coordinate` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `Activity` varchar(255) DEFAULT NULL,
-  `latitude` float DEFAULT NULL,
-  `longitude` float DEFAULT NULL,
+  `latitude` double DEFAULT NULL,
+  `longitude` double DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=21 DEFAULT CHARSET=latin1;
 
