@@ -10,11 +10,8 @@
 
 </head>
 <body>
-    
     <div id='map' style='width: 400px; height: 300px;'></div>
     <script>
-
-
         mapboxgl.accessToken = 'pk.eyJ1IjoiY3NyYXVzeWFuIiwiYSI6ImNramlndHM2NTFxdHYycXFwZ2JubHV6bjIifQ.HAW1KXwkZfKxyGx0epging';
         var map = new mapboxgl.Map({
             container: 'map',
@@ -25,15 +22,14 @@
 
         // const axios = require('axios').default;
         
-        axios.get('/').then(results=> {
+        axios.get('http://127.0.0.1:5000/').then(results => {
             console.log(results);
-            console.log(results.data);
-            results.forEach(result => {
+            results.data.forEach(result => {
                 var marker = new mapboxgl.Marker()
-            .setLngLat([result.longitude, result.langitude])
+            .setLngLat([result.longitude, result.latitude])
             .addTo(map);
             })
-            })
+        })
 
         // var marker = new mapboxgl.Marker()
         //     .setLngLat([9.5969, 14.0829])

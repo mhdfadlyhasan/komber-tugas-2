@@ -129,10 +129,13 @@ threading.Thread(target=threadSocket,args=(tree,"yes")).start()
 app = flask.Flask(__name__)
 app.config["DEBUG"] = True
 print("api ready")
+# cors = CORS(app, resources={r"/api/*": {"origins": "*"}})
 @app.route('/', methods=['GET'])
 def home():
     mycursor = mydb.cursor(dictionary=True)
     mycursor.execute("SELECT id, activity,latitude,longitude FROM coordinate")
     myresult = mycursor.fetchall()
-    return jsonify(myresult)
+    response = jsonify(myresult)
+    response.headers.add("Access-Control-Allow-Origin", "*")
+    return response
 app.run()
