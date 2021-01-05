@@ -10,16 +10,19 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 import sys
 import mysql.connector
+import flask
+from flask import jsonify
+
 mydb = mysql.connector.connect(
   host="localhost",
   user="root",
   password="",
   database="database_komber"
 )
+
 list_of_clients = []
 
 def sendStatus(hasil):
-    
     datatest=[
         float(hasil[0]),
         float(hasil[1]),
@@ -93,27 +96,43 @@ def remove(connection):
         list_of_clients.remove(connection)
         connection.close()
 
-tree = GenerateTree()
-server = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-server.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
-ip_address = '192.168.100.164'
-port = 8081
-server.bind((ip_address,port))
-server.listen(100)
-try:
+
+def threadSocket(tree,a):
     print("App Ready!")
-    while True:
-        conn,addr = server.accept()
-        message = conn.recv(2048).decode()
-        print('"'+str(message) + '" from user')
-        list_of_clients.append(conn)
-        print(addr[0]+ ' connected')
-        threading.Thread(target=clientthread,args=(conn,addr)).start()
-    # for result in hasil:
-    #     if result=="":
-    #         continue
-    # nilaiX,nilaiY,nilaiZ,flag=result.split(";",3)
-    #WAJIB ADA '#' NYA AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-except KeyboardInterrupt:
-    sys.exit()
-    print("exited")
+    server = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+    server.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
+    ip_address = '192.168.100.164'
+    port = 8081
+    server.bind((ip_address,port))
+    server.listen(100)
+    try:
+        print("App Ready!")
+        while True:
+            conn,addr = server.accept()
+            message = conn.recv(2048).decode()
+            print('"'+str(message) + '" from user')
+            list_of_clients.append(conn)
+            print(addr[0]+ ' connected')
+            threading.Thread(target=clientthread,args=(conn,addr)).start()
+        # for result in hasil:
+        #     if result=="":
+        #         continue
+        # nilaiX,nilaiY,nilaiZ,flag=result.split(";",3)
+        #WAJIB ADA '#' NYA AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+    except KeyboardInterrupt:
+        sys.exit()
+        print("exited")
+        
+tree = GenerateTree()
+threading.Thread(target=threadSocket,args=(tree,"yes")).start()
+app = flask.Flask(__name__)
+app.config["DEBUG"] = True
+print("api ready")
+@app.route('/', methods=['GET'])
+def home():
+    mycursor = mydb.cursor()
+    mycursor.execute("SELECT * FROM coordinate")
+    myresult = mycursor.fetchall()
+    print(jsonify(myresult))
+    return jsonify(myresult)
+app.run()
