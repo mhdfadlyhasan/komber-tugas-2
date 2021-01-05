@@ -136,6 +136,6 @@ def home():
     mycursor.execute("SELECT id, activity,latitude,longitude FROM coordinate")
     myresult = mycursor.fetchall()
     response = jsonify(myresult)
-    response.headers.add("Access-Control-Allow-Origin", "*")
+    response.headers.add("Access-Control-Allow-Origin", "http://127.0.0.1:5500")
     return response
 app.run()
