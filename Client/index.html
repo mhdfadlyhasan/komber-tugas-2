@@ -1,0 +1,44 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    
+    <script src='https://api.mapbox.com/mapbox-gl-js/v2.0.0/mapbox-gl.js'></script>
+    <link href='https://api.mapbox.com/mapbox-gl-js/v2.0.0/mapbox-gl.css' rel='stylesheet' />
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+
+</head>
+<body>
+    
+    <div id='map' style='width: 400px; height: 300px;'></div>
+    <script>
+
+
+        mapboxgl.accessToken = 'pk.eyJ1IjoiY3NyYXVzeWFuIiwiYSI6ImNramlndHM2NTFxdHYycXFwZ2JubHV6bjIifQ.HAW1KXwkZfKxyGx0epging';
+        var map = new mapboxgl.Map({
+            container: 'map',
+            style: 'mapbox://styles/mapbox/streets-v11',
+            center: [9.5969, 17.0829],
+            zoom: 5,
+        });
+
+        // const axios = require('axios').default;
+        
+        axios.get('/').then(results=> {
+            console.log(results);
+            console.log(results.data);
+            results.forEach(result => {
+                var marker = new mapboxgl.Marker()
+            .setLngLat([result.longitude, result.langitude])
+            .addTo(map);
+            })
+            })
+
+        // var marker = new mapboxgl.Marker()
+        //     .setLngLat([9.5969, 14.0829])
+        //     .addTo(map);
+    </script>
+
+</body>
+</html>
