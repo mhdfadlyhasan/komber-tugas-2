@@ -29,9 +29,13 @@
         axios.get('http://127.0.0.1:5000/').then(results => {
             console.log(results);
             results.data.forEach(result => {
+                var longitude = result[3]
+                var latitude = result[2]
+                var konteks = result[1]
+
                 var marker = new mapboxgl.Marker()
-            .setLngLat([result.longitude, result.latitude])
-            .addTo(map);
+                .setLngLat([longitude, latitude])
+                .addTo(map);
             })
         })
 

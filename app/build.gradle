@@ -28,13 +28,16 @@ android {
 }
 
 dependencies {
-
+    compile 'pub.devrel:easypermissions:0.2.0'
     implementation 'androidx.appcompat:appcompat:1.2.0'
     implementation 'com.google.android.material:material:1.2.1'
     implementation 'androidx.constraintlayout:constraintlayout:2.0.4'
     testImplementation 'junit:junit:4.+'
     androidTestImplementation 'androidx.test.ext:junit:1.1.2'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.3.0'
+
+    //coordinate
+    implementation 'com.google.android.gms:play-services-location:17.1.0'
 
     // LoopJ
     implementation 'com.loopj.android:android-async-http:1.4.9'

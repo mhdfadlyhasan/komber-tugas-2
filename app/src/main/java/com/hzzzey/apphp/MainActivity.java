@@ -1,6 +1,7 @@
 package com.hzzzey.apphp;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -24,6 +25,11 @@ import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.tasks.CancellationTokenSource;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
 import com.loopj.android.http.AsyncHttpResponseHandler;
 import com.loopj.android.http.RequestParams;
 import com.loopj.android.http.SyncHttpClient;
@@ -37,6 +43,9 @@ import java.util.Arrays;
 import java.util.Locale;
 
 import cz.msebera.android.httpclient.Header;
+import pub.devrel.easypermissions.EasyPermissions;
+
+import static com.google.android.gms.location.LocationRequest.PRIORITY_HIGH_ACCURACY;
 
 public class MainActivity extends AppCompatActivity implements SensorEventListener, View.OnClickListener {
 
@@ -55,14 +64,17 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     double longitude, latitude;
     float valueSensorAccelX, valueSensorAccelY, valueSensorAccelZ;
 
+    private FusedLocationProviderClient fusedLocationClient;
+    private final CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
+
     // Hubungkan view
     TextView tvStatus;
 
     private final LocationListener locationListener = new LocationListener() {
         public void onLocationChanged(Location location) {
-            longitude = location.getLongitude();
-            latitude = location.getLatitude();
-            Log.d("coordinate", longitude + " " + latitude);
+//            longitude = location.getLongitude();
+//            latitude = location.getLatitude();
+//            Log.d("coordinate", longitude + " " + latitude);
         }
 
         @Override
@@ -95,14 +107,21 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             }
             if (!checkPermission(Manifest.permission.ACCESS_FINE_LOCATION)) {
                 requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1002);
-            }
-        }
 
+            }
+
+            if (!checkPermission(Manifest.permission.ACCESS_COARSE_LOCATION)) {
+                requestPermissions(new String[]{Manifest.permission.ACCESS_COARSE_LOCATION}, 1003);
+            }
+
+        }
         mSensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         mSensorLight = mSensorManager.getDefaultSensor(Sensor.TYPE_LIGHT);
         mAcceloMeter = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
         LocationManager lm = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-        lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 2000, 10, locationListener);
+//        lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 2000, 10, locationListener);
+
     }
 
     @Override
@@ -117,7 +136,46 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                     SensorManager.SENSOR_DELAY_NORMAL);
         }
     }
+    private void requestCurrentLocation() {
+        // Request permission
+        if (ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION) ==
+                PackageManager.PERMISSION_GRANTED) {
 
+            // Main code
+            Task<Location> currentLocationTask = fusedLocationClient.getCurrentLocation(
+                    PRIORITY_HIGH_ACCURACY,
+                    cancellationTokenSource.getToken()
+            );
+
+            currentLocationTask.addOnCompleteListener((new OnCompleteListener<Location>() {
+                @Override
+                public void onComplete(@NonNull Task<Location> task) {
+                    String result = "";
+                    if (task.isSuccessful()) {
+                        // Task completed successfully
+                        Location location = task.getResult();
+                        result = "Location (success): " +
+                                location.getLatitude() +
+                                ", " +
+                                location.getLongitude();
+                        latitude = location.getLatitude();
+                        longitude = location.getLongitude();
+                        Toast.makeText(MainActivity.this, location.getLatitude() +" " + location.getLongitude() , Toast.LENGTH_LONG).show();
+                    } else {
+                        // Task failed with an exception
+                        Exception exception = task.getException();
+                        result = "Exception thrown: " + exception;
+                    }
+                    Log.d("coordinateasdfasdf", "getCurrentLocation() result: " + result);
+                }
+            }));
+        } else {
+            // TODO: Request fine location permission
+            Log.d("coordinate", "Request fine location permission.");
+        }
+    }
     @Override
     public void onClick(View v) {
         if(record) {
@@ -145,7 +203,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             case 1002:
 
                 if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-
+                    EasyPermissions.requestPermissions(this, "ACCESS_FINE_LOCATION", 3, android.Manifest.permission.ACCESS_FINE_LOCATION);
+                    EasyPermissions.requestPermissions(this, "ACCESS_COARSE_LOCATION", 4, android.Manifest.permission.ACCESS_COARSE_LOCATION);
                     return;
                 }
                 LocationManager lm = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
@@ -180,6 +239,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         @Override
         public void run() {
             while (record) {
+
                 sensoryDatasetsX.add(valueSensorAccelX);
                 sensoryDatasetsY.add(valueSensorAccelY);
                 sensoryDatasetsZ.add(valueSensorAccelZ);
@@ -191,6 +251,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                     sensoryDatasetsZ.remove(0);
                 }
                 if (sensoryDatasetsX.size() == 20 && responded) {
+                    requestCurrentLocation();
                     ArrayList<Float> rerata20Data
                             = dataAverage(sensoryDatasetsX, sensoryDatasetsY, sensoryDatasetsZ);
 
