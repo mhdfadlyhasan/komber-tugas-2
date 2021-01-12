@@ -12,17 +12,19 @@ import sys
 import mysql.connector
 import flask
 import json
-from flask import jsonify
+from flask import jsonify, request
+import psycopg2
+import os
 
-mydb = mysql.connector.connect(
-  host="localhost",
-  user="root",
-  password="",
-  database="database_komber"
-)
+mydb = psycopg2.connect(
+    host="ec2-3-216-181-219.compute-1.amazonaws.com",
+    database="dcnt2fm9dfkunf",
+    user="cgfpytafjjkpmw",
+    password="10f216b9441ab2bba0d3ad8abda609825c43618f4f741a757ec826d37b972eab",
+    port='5432',
+    )
 
 list_of_clients = []
-
 def sendStatus(hasil):
     datatest=[
         float(hasil[0]),
@@ -69,73 +71,33 @@ def pushKeDB(latitude, longitude):
     print("Lompat", float(latitude), float(longitude))
     sql = ("Insert into coordinate (activity, latitude, longitude) values (%s, %s, %s)")
     val = ("Lompat", float(latitude), float(longitude))
+    mycursor.execute(sql,val)
     mydb.commit()
-    print("1 record inserted, ID:", mycursor.lastrowid) 
+    print("1 record inserted!")
 
-def clientthread(conn,addr):
-    while True:
-        try:
-            message = conn.recv(2048).decode()
-            if message:
-                print('"'+str(message) + '" from user')
-                hasil = message.split(";")
-                result, isSendToDB = (sendStatus(hasil))
-                if(isSendToDB):
-                    pushKeDB(hasil[9],hasil[10])
-                print('selesai!')
-                print(result)
-                conn.send((result + "\n").encode())
-                # message = conn.recv(2048).decode()
-            else:
-                remove(conn)
-        except:
-            continue
-        
-def remove(connection):
-    print("removing connection!")
-    if connection in list_of_clients:
-        list_of_clients.remove(connection)
-        connection.close()
-
-
-def threadSocket(tree,a):
-    print("App Ready!")
-    server = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-    server.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
-    ip_address = '192.168.100.164'
-    port = 8081
-    server.bind((ip_address,port))
-    server.listen(100)
-    try:
-        print("App Ready!")
-        while True:
-            conn,addr = server.accept()
-            message = conn.recv(2048).decode()
-            print('"'+str(message) + '" from user')
-            list_of_clients.append(conn)
-            print(addr[0]+ ' connected')
-            threading.Thread(target=clientthread,args=(conn,addr)).start()
-        # for result in hasil:
-        #     if result=="":
-        #         continue
-        # nilaiX,nilaiY,nilaiZ,flag=result.split(";",3)
-        #WAJIB ADA '#' NYA AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-    except KeyboardInterrupt:
-        sys.exit()
-        print("exited")
-        
 tree = GenerateTree()
-threading.Thread(target=threadSocket,args=(tree,"yes")).start()
 app = flask.Flask(__name__)
-app.config["DEBUG"] = True
-print("api ready")
-# cors = CORS(app, resources={r"/api/*": {"origins": "*"}})
 @app.route('/', methods=['GET'])
 def home():
-    mycursor = mydb.cursor(dictionary=True)
+    mycursor = mydb.cursor()
     mycursor.execute("SELECT id, activity,latitude,longitude FROM coordinate")
     myresult = mycursor.fetchall()
     response = jsonify(myresult)
-    response.headers.add("Access-Control-Allow-Origin", "http://127.0.0.1:5500")
+    response.headers.add("Access-Control-Allow-Origin", "*")
     return response
-app.run()
+
+@app.route('/klasifikasi', methods=['POST'])
+def get_klasifikasi():
+    message = request.form.get('sensor_data')
+    print('"'+str(message) + '" from user')
+    hasil = message.split(";")
+    result, isSendToDB = (sendStatus(hasil))
+    print(result)
+    if(isSendToDB):
+        pushKeDB(hasil[9],hasil[10])
+    return jsonify(message=result)
+
+if __name__ == "__main__":
+    print("api ready")
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
